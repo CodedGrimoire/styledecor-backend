@@ -67,16 +67,16 @@ exports.getServiceById = async (req, res) => {
       data: service,
     });
   } catch (error) {
-    console.error('Error fetching service:', error);
-    
-    // Handle invalid ObjectId format
+    // Handle invalid ObjectId format (don't log validation errors)
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
-        message: 'Invalid service ID format.',
+        message: 'Invalid service ID format. Please provide a valid MongoDB ObjectId.',
       });
     }
 
+    // Log unexpected errors
+    console.error('Error fetching service:', error);
     return res.status(500).json({
       success: false,
       message: 'Error fetching service. Please try again.',

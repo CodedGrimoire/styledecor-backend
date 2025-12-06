@@ -33,8 +33,7 @@ const userSchema = new mongoose.Schema(
     firebaseUid: {
       type: String,
       required: [true, 'Firebase UID is required'],
-      unique: true,
-      index: true,
+      unique: true, // unique: true automatically creates an index
     },
     role: {
       type: String,
@@ -52,8 +51,7 @@ const userSchema = new mongoose.Schema(
 );
 
 // Index for faster queries
-userSchema.index({ email: 1 });
-userSchema.index({ firebaseUid: 1 });
+// Note: email and firebaseUid already have indexes from unique: true
 userSchema.index({ role: 1 });
 
 module.exports = mongoose.model('User', userSchema);
