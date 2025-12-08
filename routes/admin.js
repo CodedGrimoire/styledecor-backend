@@ -57,6 +57,12 @@ router.put('/bookings/:id/assign', adminController.assignDecorator);
 router.put('/users/:id/make-decorator', adminController.makeDecorator);
 
 /**
+ * GET /admin/users
+ * Get all users
+ */
+router.get('/users', adminController.getAllUsers);
+
+/**
  * PUT /admin/decorators/:id/approve
  * Approve a decorator
  */
@@ -67,6 +73,12 @@ router.put('/decorators/:id/approve', adminController.approveDecorator);
  * Disable a decorator
  */
 router.put('/decorators/:id/disable', adminController.disableDecorator);
+
+/**
+ * GET /admin/decorators
+ * Get all decorators
+ */
+router.get('/decorators', adminController.getAllDecorators);
 
 /**
  * GET /admin/analytics/revenue
@@ -82,4 +94,3 @@ router.get('/analytics/revenue', adminController.getRevenueAnalytics);
 router.get('/analytics/service-demand', adminController.getServiceDemandAnalytics);
 
 module.exports = router;
-

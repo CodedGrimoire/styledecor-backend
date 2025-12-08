@@ -288,66 +288,114 @@ exports.assignDecorator = async (req, res) => {
  * Converts a regular user to a decorator role and creates a decorator profile.
  */
 exports.makeDecorator = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
     const { specialties } = req.body;
 
-    // Find user
+    // 1. Request Validation
+    if (!specialties) {
+      return res.status(400).json({ success: false, message: 'Specialties are required.' });
+    }
+    if (!Array.isArray(specialties)) {
+      return res.status(400).json({ success: false, message: 'Specialties must be an array.' });
+    }
+    const cleanedSpecialties = specialties.map(s => typeof s === 'string' ? s.trim() : '').filter(s => s.length > 0);
+    if (cleanedSpecialties.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one valid, non-empty specialty is required.' });
+    }
+
+    // 2. Database Operations
+    // Step 2a: Find the User
     const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found.',
-      });
+      return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    // Check if user is already a decorator
+    // Step 2b: Check if user is already a decorator and has a profile
     if (user.role === 'decorator') {
-      return res.status(400).json({
-        success: false,
-        message: 'User is already a decorator.',
-      });
+      const existingDecorator = await Decorator.findOne({ userId: user._id });
+      if (existingDecorator) {
+        return res.status(400).json({ success: false, message: 'User is already a decorator.' });
+      }
     }
 
-    // Update user role
-    user.role = 'decorator';
-    await user.save();
+    // Step 2c & 2d: Create Decorator Profile and Update User Role (Atomic-like operation)
+    // We create the decorator profile first. If this fails, the user's role is not changed.
+    let newDecorator;
+    try {
+      newDecorator = await Decorator.create({
+        userId: user._id,
+        specialties: cleanedSpecialties,
+        status: 'pending', // Requires admin approval
+      });
 
-    // Create decorator profile
-    const decorator = await Decorator.create({
-      userId: user._id,
-      specialties: specialties || [],
-      status: 'pending', // Requires admin approval
-    });
+      // If decorator profile creation is successful, update the user's role.
+      user.role = 'decorator';
+      await user.save();
+    } catch (error) {
+      // Rollback: If decorator profile was created but updating the user failed, delete the orphaned decorator profile.
+      if (newDecorator) {
+        await Decorator.findByIdAndDelete(newDecorator._id);
+      }
+      // Re-throw to be caught by the main error handler
+      throw error;
+    }
 
+    // 3. Success Response
     return res.status(200).json({
       success: true,
       message: 'User converted to decorator successfully. Decorator profile created with pending status.',
       data: {
-        user,
-        decorator,
+        user: user.toObject(), // Use toObject() for a clean object
+        decorator: newDecorator.toObject(),
       },
     });
+
   } catch (error) {
-    console.error('Error making user decorator:', error);
-    
+    // 4. Error Handling
+    console.error(`Error in makeDecorator for user ID ${id}:`, error);
+
+    // Handle specific, known errors first
     if (error.name === 'CastError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid user ID format.',
-      });
+      return res.status(400).json({ success: false, message: 'Invalid user ID format.' });
+    }
+    if (error.name === 'MongoServerError' && error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Decorator profile already exists for this user.' });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: `Validation error: ${error.message}` });
     }
 
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Decorator profile already exists for this user.',
-      });
-    }
-
+    // Generic fallback for any other unexpected errors
     return res.status(500).json({
       success: false,
-      message: 'Error making user decorator. Please try again.',
+      message: 'An internal server error occurred while converting user to decorator.',
+    });
+  }
+};
+
+/**
+ * Get all users
+ * GET /admin/users
+ * 
+ * Returns a list of all users in the system.
+ */
+exports.getAllUsers = async (req, res) => {
+  try {
+    // Fetch all users, sorted by creation date
+    const users = await User.find({}).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users,
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching users. Please try again.',
       error: error.message,
     });
   }
@@ -440,6 +488,35 @@ exports.disableDecorator = async (req, res) => {
     });
   }
 };
+
+/**
+ * Get all decorators
+ * GET /admin/decorators
+ * 
+ * Returns a list of all decorators in the system.
+ */
+exports.getAllDecorators = async (req, res) => {
+  try {
+    // Fetch all decorators and populate the associated user's name, email, and image
+    const decorators = await Decorator.find({})
+      .populate('userId', 'name email image')
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: decorators.length,
+      data: decorators,
+    });
+  } catch (error) {
+    console.error('Error fetching decorators:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching decorators. Please try again.',
+      error: error.message,
+    });
+  }
+};
+
 
 /**
  * Get revenue analytics
@@ -575,4 +652,3 @@ exports.getServiceDemandAnalytics = async (req, res) => {
     });
   }
 };
-

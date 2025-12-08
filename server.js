@@ -70,11 +70,12 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
-app.use('/', publicRoutes); // Public routes (no auth required)
-app.use('/', userRoutes); // User routes (auth required)
-app.use('/admin', adminRoutes); // Admin routes (auth + admin role required)
-app.use('/decorator', decoratorRoutes); // Decorator routes (auth + decorator role required)
-app.use('/payments', paymentRoutes); // Payment routes (auth required)
+// Group all API routes under the /api prefix for clarity and to avoid conflicts.
+app.use('/api', publicRoutes); // e.g., /api/services, /api/register, /api/decorators/top
+app.use('/api', userRoutes); // e.g., /api/bookings
+app.use('/api/admin', adminRoutes); // e.g., /api/admin/services
+app.use('/api/decorator', decoratorRoutes); // e.g., /api/decorator/projects
+app.use('/api/payments', paymentRoutes); // e.g., /api/payments/create-intent
 
 // 404 handler for undefined routes
 app.use((req, res) => {

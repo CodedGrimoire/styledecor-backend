@@ -7,6 +7,7 @@
 
 const Service = require('../models/Service');
 const User = require('../models/User');
+const Decorator = require('../models/Decorator');
 const admin = require('../config/firebase');
 
 /**
@@ -41,6 +42,36 @@ exports.getServices = async (req, res) => {
       message: 'Error fetching services. Please try again.',
       error: error.message,
     });
+  }
+};
+
+/**
+ * Get top 3 rated decorators
+ * GET /api/decorators/top
+ *
+ * Returns the top 3 decorators based on their rating.
+ * This is a public endpoint.
+ */
+exports.getTopDecorators = async (req, res) => {
+  try {
+    // Find top 3 approved decorators, sorted by rating
+    const decorators = await Decorator.find({ status: 'approved' })
+      .sort({ rating: -1 }) // Sort by rating in descending order
+      .limit(3) // Limit to the top 3
+      .populate('userId', 'name image'); // Populate user info
+
+    if (!decorators || decorators.length === 0) {
+      return res.status(404).json({ success: false, message: 'No top decorators found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      count: decorators.length,
+      data: decorators,
+    });
+  } catch (err) {
+    console.error('Error fetching top decorators:', err);
+    res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
@@ -227,4 +258,3 @@ exports.register = async (req, res) => {
     });
   }
 };
-

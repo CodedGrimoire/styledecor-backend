@@ -26,13 +26,6 @@ const decoratorSchema = new mongoose.Schema(
     specialties: {
       type: [String],
       default: [],
-      validate: {
-        validator: function (value) {
-          const allowedCategories = ['interior', 'exterior', 'event', 'commercial', 'residential', 'other'];
-          return value.every((specialty) => allowedCategories.includes(specialty));
-        },
-        message: 'Specialties must be valid categories',
-      },
     },
     rating: {
       type: Number,
@@ -56,4 +49,3 @@ decoratorSchema.index({ status: 1 });
 decoratorSchema.index({ rating: -1 });
 
 module.exports = mongoose.model('Decorator', decoratorSchema);
-
