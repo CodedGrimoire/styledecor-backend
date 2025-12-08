@@ -1,20 +1,3 @@
-/**
- * Service Model
- * 
- * Represents a decoration service offered in the StyleDecor platform.
- * Services are created by admins and can be booked by users.
- * 
- * Fields:
- * - service_name: Name of the service
- * - cost: Price of the service
- * - unit: Unit of measurement (e.g., 'per hour', 'per room', 'per project')
- * - category: Service category (e.g., 'interior', 'exterior', 'event')
- * - description: Detailed description of the service
- * - createdByEmail: Email of the admin who created the service
- * - image: URL to service image (optional)
- * - createdAt: Timestamp when service was created
- */
-
 const mongoose = require('mongoose');
 
 const serviceSchema = new mongoose.Schema(
@@ -62,9 +45,7 @@ const serviceSchema = new mongoose.Schema(
   }
 );
 
-// Index for faster queries
 serviceSchema.index({ category: 1 });
 serviceSchema.index({ createdByEmail: 1 });
 
 module.exports = mongoose.model('Service', serviceSchema);
-

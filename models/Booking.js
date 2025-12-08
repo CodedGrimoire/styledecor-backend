@@ -1,20 +1,3 @@
-/**
- * Booking Model
- * 
- * Represents a booking made by a user for a service.
- * Bookings can be assigned to decorators and have payment and status tracking.
- * 
- * Fields:
- * - userId: Reference to the User who made the booking
- * - serviceId: Reference to the Service being booked
- * - date: Date and time of the service
- * - location: Location where the service will be performed
- * - paymentStatus: Payment status - 'pending', 'paid', 'failed', 'refunded'
- * - status: Booking status - 'pending', 'confirmed', 'assigned', 'in-progress', 'completed', 'cancelled'
- * - decoratorId: Reference to the Decorator assigned to this booking (optional)
- * - createdAt: Timestamp when booking was created
- */
-
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema(
@@ -67,11 +50,9 @@ const bookingSchema = new mongoose.Schema(
   }
 );
 
-// Index for faster queries
 bookingSchema.index({ userId: 1, createdAt: -1 });
 bookingSchema.index({ decoratorId: 1 });
 bookingSchema.index({ status: 1 });
 bookingSchema.index({ paymentStatus: 1 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
-

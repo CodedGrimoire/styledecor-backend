@@ -1,24 +1,9 @@
-/**
- * Decorator Controller
- * 
- * Handles routes for decorators.
- * Decorators can view their assigned projects and update project status.
- */
-
 const Booking = require('../models/Booking');
 const Decorator = require('../models/Decorator');
 
-/**
- * Get decorator's assigned projects
- * GET /decorator/projects
- * 
- * Returns all bookings assigned to the authenticated decorator.
- */
 exports.getProjects = async (req, res) => {
   try {
     const userId = req.user._id;
-
-    // Find decorator profile
     const decorator = await Decorator.findOne({ userId });
 
     if (!decorator) {
@@ -28,7 +13,6 @@ exports.getProjects = async (req, res) => {
       });
     }
 
-    // Check if decorator is approved
     if (decorator.status !== 'approved') {
       return res.status(403).json({
         success: false,
@@ -36,16 +20,14 @@ exports.getProjects = async (req, res) => {
       });
     }
 
-    // Fetch all bookings assigned to this decorator
     const bookings = await Booking.find({ decoratorId: decorator._id })
       .populate('userId', 'name email image')
       .populate('serviceId', 'service_name cost unit category description image')
-      .sort({ date: 1 }); // Sort by date ascending (earliest first)
+      .sort({ date: 1 });
 
     return res.status(200).json({
       success: true,
       count: bookings.length,
-      data: bookings,
     });
   } catch (error) {
     console.error('Error fetching decorator projects:', error);
@@ -57,20 +39,12 @@ exports.getProjects = async (req, res) => {
   }
 };
 
-/**
- * Update booking status
- * PUT /decorator/project/:bookingId/status
- * 
- * Allows decorator to update the status of an assigned booking.
- * Valid status transitions: 'assigned' -> 'in-progress' -> 'completed'
- */
 exports.updateProjectStatus = async (req, res) => {
   try {
     const { bookingId } = req.params;
     const { status } = req.body;
     const userId = req.user._id;
 
-    // Validate status
     const validStatuses = ['assigned', 'in-progress', 'completed'];
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
@@ -79,7 +53,6 @@ exports.updateProjectStatus = async (req, res) => {
       });
     }
 
-    // Find decorator profile
     const decorator = await Decorator.findOne({ userId });
     if (!decorator) {
       return res.status(404).json({
@@ -88,7 +61,6 @@ exports.updateProjectStatus = async (req, res) => {
       });
     }
 
-    // Find booking
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({
@@ -97,7 +69,6 @@ exports.updateProjectStatus = async (req, res) => {
       });
     }
 
-    // Verify booking is assigned to this decorator
     if (booking.decoratorId?.toString() !== decorator._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -105,20 +76,29 @@ exports.updateProjectStatus = async (req, res) => {
       });
     }
 
-    // Validate status transition
     const currentStatus = booking.status;
-    if (currentStatus === 'completed') {
+    const allowedTransitions = {
+      assigned: ['in-progress', 'completed'],
+      'in-progress': ['completed'],
+    };
+
+    if (currentStatus === 'completed' || currentStatus === 'cancelled') {
       return res.status(400).json({
         success: false,
-        message: 'Cannot update status of a completed booking.',
+        message: `Cannot update status of a booking that is already ${currentStatus}.`,
       });
     }
 
-    // Update booking status
+    if (!allowedTransitions[currentStatus] || !allowedTransitions[currentStatus].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status transition from '${currentStatus}' to '${status}'.`,
+      });
+    }
+
     booking.status = status;
     await booking.save();
 
-    // Populate related data for response
     await booking.populate('userId', 'name email image');
     await booking.populate('serviceId', 'service_name cost unit category description image');
 
@@ -144,4 +124,3 @@ exports.updateProjectStatus = async (req, res) => {
     });
   }
 };
-

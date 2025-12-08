@@ -1,18 +1,3 @@
-/**
- * User Model
- * 
- * Represents a user in the StyleDecor system.
- * Users can have different roles: 'user', 'admin', or 'decorator'.
- * 
- * Fields:
- * - name: User's full name
- * - email: User's email address (unique, required)
- * - firebaseUid: Firebase Authentication UID (unique, required)
- * - role: User role - 'user', 'admin', or 'decorator' (default: 'user')
- * - image: URL to user's profile image (optional)
- * - createdAt: Timestamp when user was created
- */
-
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
@@ -33,7 +18,7 @@ const userSchema = new mongoose.Schema(
     firebaseUid: {
       type: String,
       required: [true, 'Firebase UID is required'],
-      unique: true, // unique: true automatically creates an index
+      unique: true,
     },
     role: {
       type: String,
@@ -46,13 +31,10 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt fields
+    timestamps: true,
   }
 );
 
-// Index for faster queries
-// Note: email and firebaseUid already have indexes from unique: true
 userSchema.index({ role: 1 });
 
 module.exports = mongoose.model('User', userSchema);
-

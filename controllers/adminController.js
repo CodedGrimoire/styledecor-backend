@@ -1,28 +1,14 @@
-/**
- * Admin Controller
- * 
- * Handles routes for admin users.
- * Admins can manage services, bookings, users, decorators, and view analytics.
- */
-
 const Service = require('../models/Service');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const Decorator = require('../models/Decorator');
 const Payment = require('../models/Payment');
 
-/**
- * Create a new service
- * POST /admin/services
- * 
- * Creates a new decoration service.
- */
 exports.createService = async (req, res) => {
   try {
     const { service_name, cost, unit, category, description, image } = req.body;
     const createdByEmail = req.user.email;
 
-    // Validate required fields
     if (!service_name || !cost || !unit || !category || !description) {
       return res.status(400).json({
         success: false,
@@ -30,7 +16,6 @@ exports.createService = async (req, res) => {
       });
     }
 
-    // Create service
     const service = await Service.create({
       service_name: service_name.trim(),
       cost: parseFloat(cost),
@@ -66,18 +51,11 @@ exports.createService = async (req, res) => {
   }
 };
 
-/**
- * Update a service
- * PUT /admin/services/:id
- * 
- * Updates an existing service.
- */
 exports.updateService = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    // Find service
     const service = await Service.findById(id);
     if (!service) {
       return res.status(404).json({
@@ -86,7 +64,6 @@ exports.updateService = async (req, res) => {
       });
     }
 
-    // Update service fields
     Object.keys(updates).forEach((key) => {
       if (['service_name', 'cost', 'unit', 'category', 'description', 'image'].includes(key)) {
         service[key] = updates[key];
@@ -127,12 +104,6 @@ exports.updateService = async (req, res) => {
   }
 };
 
-/**
- * Delete a service
- * DELETE /admin/services/:id
- * 
- * Deletes a service. Note: This may affect existing bookings.
- */
 exports.deleteService = async (req, res) => {
   try {
     const { id } = req.params;
@@ -168,22 +139,14 @@ exports.deleteService = async (req, res) => {
   }
 };
 
-/**
- * Get all bookings
- * GET /admin/bookings
- * 
- * Returns all bookings in the system with optional filters.
- */
 exports.getAllBookings = async (req, res) => {
   try {
     const { status, paymentStatus } = req.query;
 
-    // Build query
     const query = {};
     if (status) query.status = status;
     if (paymentStatus) query.paymentStatus = paymentStatus;
 
-    // Fetch bookings
     const bookings = await Booking.find(query)
       .populate('userId', 'name email image')
       .populate('serviceId', 'service_name cost unit category')
@@ -205,12 +168,6 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
-/**
- * Assign a decorator to a booking
- * PUT /admin/bookings/:id/assign
- * 
- * Assigns a decorator to a booking.
- */
 exports.assignDecorator = async (req, res) => {
   try {
     const { id } = req.params;
@@ -223,7 +180,6 @@ exports.assignDecorator = async (req, res) => {
       });
     }
 
-    // Find booking
     const booking = await Booking.findById(id);
     if (!booking) {
       return res.status(404).json({
@@ -232,7 +188,6 @@ exports.assignDecorator = async (req, res) => {
       });
     }
 
-    // Verify decorator exists and is approved
     const decorator = await Decorator.findById(decoratorId);
     if (!decorator) {
       return res.status(404).json({
@@ -248,12 +203,10 @@ exports.assignDecorator = async (req, res) => {
       });
     }
 
-    // Assign decorator and update status
     booking.decoratorId = decoratorId;
     booking.status = 'assigned';
     await booking.save();
 
-    // Populate related data
     await booking.populate('userId', 'name email image');
     await booking.populate('serviceId', 'service_name cost unit category');
     await booking.populate('decoratorId', 'userId');
@@ -281,19 +234,12 @@ exports.assignDecorator = async (req, res) => {
   }
 };
 
-/**
- * Make a user a decorator
- * PUT /admin/users/:id/make-decorator
- * 
- * Converts a regular user to a decorator role and creates a decorator profile.
- */
 exports.makeDecorator = async (req, res) => {
   const { id } = req.params;
 
   try {
     const { specialties } = req.body;
 
-    // 1. Request Validation
     if (!specialties) {
       return res.status(400).json({ success: false, message: 'Specialties are required.' });
     }
@@ -305,14 +251,11 @@ exports.makeDecorator = async (req, res) => {
       return res.status(400).json({ success: false, message: 'At least one valid, non-empty specialty is required.' });
     }
 
-    // 2. Database Operations
-    // Step 2a: Find the User
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
-    // Step 2b: Check if user is already a decorator and has a profile
     if (user.role === 'decorator') {
       const existingDecorator = await Decorator.findOne({ userId: user._id });
       if (existingDecorator) {
@@ -320,43 +263,35 @@ exports.makeDecorator = async (req, res) => {
       }
     }
 
-    // Step 2c & 2d: Create Decorator Profile and Update User Role (Atomic-like operation)
-    // We create the decorator profile first. If this fails, the user's role is not changed.
     let newDecorator;
     try {
       newDecorator = await Decorator.create({
         userId: user._id,
         specialties: cleanedSpecialties,
-        status: 'pending', // Requires admin approval
+        status: 'pending',
       });
 
-      // If decorator profile creation is successful, update the user's role.
       user.role = 'decorator';
       await user.save();
     } catch (error) {
-      // Rollback: If decorator profile was created but updating the user failed, delete the orphaned decorator profile.
       if (newDecorator) {
         await Decorator.findByIdAndDelete(newDecorator._id);
       }
-      // Re-throw to be caught by the main error handler
       throw error;
     }
 
-    // 3. Success Response
     return res.status(200).json({
       success: true,
       message: 'User converted to decorator successfully. Decorator profile created with pending status.',
       data: {
-        user: user.toObject(), // Use toObject() for a clean object
+        user: user.toObject(),
         decorator: newDecorator.toObject(),
       },
     });
 
   } catch (error) {
-    // 4. Error Handling
     console.error(`Error in makeDecorator for user ID ${id}:`, error);
 
-    // Handle specific, known errors first
     if (error.name === 'CastError') {
       return res.status(400).json({ success: false, message: 'Invalid user ID format.' });
     }
@@ -367,7 +302,6 @@ exports.makeDecorator = async (req, res) => {
       return res.status(400).json({ success: false, message: `Validation error: ${error.message}` });
     }
 
-    // Generic fallback for any other unexpected errors
     return res.status(500).json({
       success: false,
       message: 'An internal server error occurred while converting user to decorator.',
@@ -375,15 +309,8 @@ exports.makeDecorator = async (req, res) => {
   }
 };
 
-/**
- * Get all users
- * GET /admin/users
- * 
- * Returns a list of all users in the system.
- */
 exports.getAllUsers = async (req, res) => {
   try {
-    // Fetch all users, sorted by creation date
     const users = await User.find({}).sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -401,12 +328,6 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-/**
- * Approve a decorator
- * PUT /admin/decorators/:id/approve
- * 
- * Approves a decorator, allowing them to receive bookings.
- */
 exports.approveDecorator = async (req, res) => {
   try {
     const { id } = req.params;
@@ -445,12 +366,6 @@ exports.approveDecorator = async (req, res) => {
   }
 };
 
-/**
- * Disable a decorator
- * PUT /admin/decorators/:id/disable
- * 
- * Disables a decorator, preventing them from receiving new bookings.
- */
 exports.disableDecorator = async (req, res) => {
   try {
     const { id } = req.params;
@@ -489,15 +404,8 @@ exports.disableDecorator = async (req, res) => {
   }
 };
 
-/**
- * Get all decorators
- * GET /admin/decorators
- * 
- * Returns a list of all decorators in the system.
- */
 exports.getAllDecorators = async (req, res) => {
   try {
-    // Fetch all decorators and populate the associated user's name, email, and image
     const decorators = await Decorator.find({})
       .populate('userId', 'name email image')
       .sort({ createdAt: -1 });
@@ -518,17 +426,10 @@ exports.getAllDecorators = async (req, res) => {
 };
 
 
-/**
- * Get revenue analytics
- * GET /admin/analytics/revenue
- * 
- * Returns revenue analytics including total revenue, revenue by period, etc.
- */
 exports.getRevenueAnalytics = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    // Build date filter
     const dateFilter = {};
     if (startDate || endDate) {
       dateFilter.createdAt = {};
@@ -536,16 +437,13 @@ exports.getRevenueAnalytics = async (req, res) => {
       if (endDate) dateFilter.createdAt.$lte = new Date(endDate);
     }
 
-    // Get all successful payments
     const payments = await Payment.find({
       status: 'succeeded',
       ...dateFilter,
     });
 
-    // Calculate total revenue (amount is in cents, convert to dollars)
     const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0) / 100;
 
-    // Group by month
     const revenueByMonth = {};
     payments.forEach((payment) => {
       const month = payment.createdAt.toISOString().substring(0, 7); // YYYY-MM
@@ -573,15 +471,8 @@ exports.getRevenueAnalytics = async (req, res) => {
   }
 };
 
-/**
- * Get service demand analytics
- * GET /admin/analytics/service-demand
- * 
- * Returns analytics about which services are most in demand.
- */
 exports.getServiceDemandAnalytics = async (req, res) => {
   try {
-    // Aggregate bookings by service
     const serviceDemand = await Booking.aggregate([
       {
         $group: {
@@ -616,7 +507,6 @@ exports.getServiceDemandAnalytics = async (req, res) => {
       },
     ]);
 
-    // Group by category
     const demandByCategory = {};
     serviceDemand.forEach((item) => {
       const category = item.serviceCategory;

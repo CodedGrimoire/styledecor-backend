@@ -1,26 +1,11 @@
-/**
- * User Controller
- * 
- * Handles routes for authenticated users.
- * Users can create bookings, view their bookings, and cancel bookings.
- */
-
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 
-/**
- * Create a new booking
- * POST /bookings
- * 
- * Creates a booking for the authenticated user.
- * Requires: serviceId, date, location in request body.
- */
 exports.createBooking = async (req, res) => {
   try {
     const { serviceId, date, location } = req.body;
     const userId = req.user._id;
 
-    // Validate required fields
     if (!serviceId || !date || !location) {
       return res.status(400).json({
         success: false,
@@ -28,7 +13,6 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Verify service exists
     const service = await Service.findById(serviceId);
     if (!service) {
       return res.status(404).json({
@@ -37,7 +21,6 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Validate date is in the future
     const bookingDate = new Date(date);
     if (bookingDate <= new Date()) {
       return res.status(400).json({
@@ -46,7 +29,6 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Create booking
     const booking = await Booking.create({
       userId,
       serviceId,
@@ -56,7 +38,6 @@ exports.createBooking = async (req, res) => {
       status: 'pending',
     });
 
-    // Populate service details in response
     await booking.populate('serviceId', 'service_name cost unit category description image');
 
     return res.status(201).json({
@@ -82,17 +63,10 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-/**
- * Get current user's bookings
- * GET /bookings/me
- * 
- * Returns all bookings made by the authenticated user.
- */
 exports.getMyBookings = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Fetch all bookings for the user
     const bookings = await Booking.find({ userId })
       .populate('serviceId', 'service_name cost unit category description image')
       .populate('decoratorId', 'userId')
@@ -113,19 +87,11 @@ exports.getMyBookings = async (req, res) => {
   }
 };
 
-/**
- * Delete/Cancel a booking
- * DELETE /bookings/:id
- * 
- * Cancels a booking. Only the user who created the booking can cancel it.
- * Bookings with status 'completed' or 'in-progress' cannot be cancelled.
- */
 exports.deleteBooking = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user._id;
 
-    // Find booking
     const booking = await Booking.findById(id);
 
     if (!booking) {
@@ -135,7 +101,6 @@ exports.deleteBooking = async (req, res) => {
       });
     }
 
-    // Verify user owns the booking
     if (booking.userId.toString() !== userId.toString()) {
       return res.status(403).json({
         success: false,
@@ -143,7 +108,6 @@ exports.deleteBooking = async (req, res) => {
       });
     }
 
-    // Check if booking can be cancelled
     if (['completed', 'in-progress'].includes(booking.status)) {
       return res.status(400).json({
         success: false,
@@ -151,7 +115,6 @@ exports.deleteBooking = async (req, res) => {
       });
     }
 
-    // Update booking status to cancelled
     booking.status = 'cancelled';
     await booking.save();
 
@@ -177,4 +140,3 @@ exports.deleteBooking = async (req, res) => {
     });
   }
 };
-

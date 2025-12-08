@@ -1,33 +1,17 @@
-/**
- * Public Controller
- * 
- * Handles public routes that don't require authentication.
- * These routes are accessible to all users (authenticated or not).
- */
-
 const Service = require('../models/Service');
 const User = require('../models/User');
 const Decorator = require('../models/Decorator');
 const admin = require('../config/firebase');
 
-/**
- * Get all services
- * GET /services
- * 
- * Returns a list of all available services.
- * Can be filtered by category if provided as query parameter.
- */
 exports.getServices = async (req, res) => {
   try {
     const { category } = req.query;
     
-    // Build query object
     const query = {};
     if (category) {
       query.category = category;
     }
 
-    // Fetch services from database
     const services = await Service.find(query).sort({ createdAt: -1 });
 
     return res.status(200).json({
@@ -45,20 +29,12 @@ exports.getServices = async (req, res) => {
   }
 };
 
-/**
- * Get top 3 rated decorators
- * GET /api/decorators/top
- *
- * Returns the top 3 decorators based on their rating.
- * This is a public endpoint.
- */
 exports.getTopDecorators = async (req, res) => {
   try {
-    // Find top 3 approved decorators, sorted by rating
     const decorators = await Decorator.find({ status: 'approved' })
-      .sort({ rating: -1 }) // Sort by rating in descending order
-      .limit(3) // Limit to the top 3
-      .populate('userId', 'name image'); // Populate user info
+      .sort({ rating: -1 })
+      .limit(3)
+      .populate('userId', 'name image');
 
     if (!decorators || decorators.length === 0) {
       return res.status(404).json({ success: false, message: 'No top decorators found' });
@@ -75,17 +51,10 @@ exports.getTopDecorators = async (req, res) => {
   }
 };
 
-/**
- * Get a single service by ID
- * GET /services/:id
- * 
- * Returns details of a specific service.
- */
 exports.getServiceById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Find service by ID
     const service = await Service.findById(id);
 
     if (!service) {
@@ -100,7 +69,6 @@ exports.getServiceById = async (req, res) => {
       data: service,
     });
   } catch (error) {
-    // Handle invalid ObjectId format (don't log validation errors)
     if (error.name === 'CastError') {
       return res.status(400).json({
         success: false,
@@ -108,7 +76,6 @@ exports.getServiceById = async (req, res) => {
       });
     }
 
-    // Log unexpected errors
     console.error('Error fetching service:', error);
     return res.status(500).json({
       success: false,
@@ -118,26 +85,10 @@ exports.getServiceById = async (req, res) => {
   }
 };
 
-/**
- * Register/Create User Profile
- * POST /register
- * 
- * Creates a user profile in the database after Firebase authentication.
- * This endpoint verifies the Firebase token and creates the user profile.
- * 
- * Headers:
- * - Authorization: Bearer <firebase-jwt-token> (required)
- * 
- * Request Body:
- * - name: User's full name (required)
- * - role: User role - 'user', 'admin', or 'decorator' (optional, defaults to 'user')
- * - image: URL to user's profile image (optional)
- */
 exports.register = async (req, res) => {
   try {
     const { name, role, image } = req.body;
 
-    // Validate required fields
     if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
@@ -145,7 +96,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Extract token from Authorization header
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -155,7 +105,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Extract the token (remove "Bearer " prefix)
     const token = authHeader.split('Bearer ')[1];
 
     if (!token) {
@@ -165,7 +114,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Verify the token with Firebase Admin SDK
     let decodedToken;
     try {
       decodedToken = await admin.auth().verifyIdToken(token);
@@ -177,7 +125,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Extract Firebase UID and email from decoded token
     const firebaseUid = decodedToken.uid;
     const email = decodedToken.email;
 
@@ -188,7 +135,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Check if user already exists
     const existingUser = await User.findOne({ firebaseUid });
     if (existingUser) {
       return res.status(200).json({
@@ -198,7 +144,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Check if email is already registered (in case of different firebaseUid)
     const existingEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingEmail) {
       return res.status(400).json({
@@ -207,7 +152,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Validate role if provided
     if (role && !['user', 'admin', 'decorator'].includes(role)) {
       return res.status(400).json({
         success: false,
@@ -215,7 +159,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Create user profile
     const user = await User.create({
       name: name.trim(),
       email: email.toLowerCase(),
@@ -232,7 +175,6 @@ exports.register = async (req, res) => {
   } catch (error) {
     console.error('Error registering user:', error);
 
-    // Handle duplicate key errors
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
       return res.status(400).json({
@@ -241,7 +183,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Handle validation errors
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map(err => err.message);
       return res.status(400).json({
