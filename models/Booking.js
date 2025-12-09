@@ -2,49 +2,79 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema(
   {
-    userId: {
+    userId: 
+    {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'User ID is required'],
       index: true,
     },
-    serviceId: {
+
+
+    serviceId: 
+    
+    {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Service',
       required: [true, 'Service ID is required'],
       index: true,
     },
-    date: {
+    date: 
+    
+    {
       type: Date,
       required: [true, 'Date is required'],
-      validate: {
-        validator: function (value) {
+      validate: 
+      
+      {
+        validator: function (value) 
+        
+        {
           return value > new Date();
         },
+
+
         message: 'Booking date must be in the future',
       },
     },
-    location: {
+
+
+    location: 
+    
+    {
       type: String,
       required: [true, 'Location is required'],
       trim: true,
     },
-    paymentStatus: {
+
+    
+    paymentStatus: 
+    
+    {
       type: String,
       enum: ['pending', 'paid', 'failed', 'refunded'],
       default: 'pending',
     },
-    status: {
+
+    status: 
+    
+    
+    {
       type: String,
       enum: ['pending', 'confirmed', 'assigned', 'in-progress', 'completed', 'cancelled'],
       default: 'pending',
     },
-    decoratorId: {
+    decoratorId: 
+    
+    
+    {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Decorator',
       default: null,
     },
   },
+
+
   {
     timestamps: true,
   }
