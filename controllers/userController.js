@@ -1,7 +1,10 @@
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 
-exports.createBooking = async (req, res) => {
+exports.createBooking = async (req, res) =>
+  
+  
+  {
   try {
     const { serviceId, date, location } = req.body;
     const userId = req.user._id;
