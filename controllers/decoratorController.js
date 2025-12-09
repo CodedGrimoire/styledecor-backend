@@ -28,6 +28,7 @@ exports.getProjects = async (req, res) => {
     return res.status(200).json({
       success: true,
       count: bookings.length,
+      data: bookings,
     });
   } catch (error) {
     console.error('Error fetching decorator projects:', error);
