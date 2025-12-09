@@ -1,14 +1,4 @@
-/**
- * Firebase Admin SDK Configuration
- * 
- * This module initializes Firebase Admin SDK for server-side authentication.
- * It verifies JWT tokens sent from the frontend to authenticate users.
- * 
- * Required environment variables:
- * - FIREBASE_PROJECT_ID: Your Firebase project ID
- * - FIREBASE_PRIVATE_KEY: Service account private key (with escaped newlines)
- * - FIREBASE_CLIENT_EMAIL: Service account client email
- */
+
 
 const admin = require('firebase-admin');
 
