@@ -125,3 +125,109 @@ exports.updateProjectStatus = async (req, res) => {
     });
   }
 };
+
+
+exports.updateOnSiteStatus = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { status1 } = req.body;
+    const userId = req.user._id;
+
+    const validStatuses = [
+      'assigned',
+      'planning-phase',
+      'materials-prepared',
+      'on-the-way-to-venue',
+      'setup-in-progress',
+      'completed'
+    ];
+
+    if (!status1 || !validStatuses.includes(status1)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status1. Must be one of: ${validStatuses.join(', ')}`,
+      });
+    }
+
+    const decorator = await Decorator.findOne({ userId });
+    if (!decorator) {
+      return res.status(404).json({
+        success: false,
+        message: 'Decorator profile not found.',
+      });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found.',
+      });
+    }
+
+    if (booking.decoratorId?.toString() !== decorator._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'This booking is not assigned to you.',
+      });
+    }
+
+    // Validate status progression (optional - can be made more strict)
+    const statusOrder = [
+      'assigned',
+      'planning-phase',
+      'materials-prepared',
+      'on-the-way-to-venue',
+      'setup-in-progress',
+      'completed'
+    ];
+
+    const currentIndex = booking.status1 
+      ? statusOrder.indexOf(booking.status1) 
+      : -1;
+    const newIndex = statusOrder.indexOf(status1);
+
+    // Allow moving forward or staying at same level, but not going backwards
+    // (except if current status is null, allow any)
+    if (currentIndex >= 0 && newIndex < currentIndex) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot move status backwards from '${booking.status1}' to '${status1}'.`,
+      });
+    }
+
+    // Update status1
+    booking.status1 = status1;
+    
+    // If status1 is 'completed', also update main status to 'completed'
+    if (status1 === 'completed') {
+      booking.status = 'completed';
+    }
+    
+    await booking.save();
+
+    await booking.populate('userId', 'name email image');
+    await booking.populate('serviceId', 'service_name cost unit category description image');
+
+    return res.status(200).json({
+      success: true,
+      message: 'On-site service status updated successfully.',
+      data: booking,
+    });
+  } catch (error) {
+    console.error('Error updating on-site service status:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID format.',
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'Error updating on-site service status. Please try again.',
+      error: error.message,
+    });
+  }
+};

@@ -11,4 +11,6 @@ router.get('/projects', decoratorController.getProjects);
 
 router.put('/project/:bookingId/status', decoratorController.updateProjectStatus);
 
+router.put('/project/:bookingId/status1', decoratorController.updateOnSiteStatus);
+
 module.exports = router;
