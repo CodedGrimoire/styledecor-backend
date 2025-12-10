@@ -15,15 +15,6 @@ const decoratorSchema = new mongoose.Schema(
 
 
 
-    specialties: 
-    
-    
-    {
-      type: [String],
-      default: [],
-
-
-    },
     rating: 
     
     
@@ -35,6 +26,15 @@ const decoratorSchema = new mongoose.Schema(
       max: [5, 'Rating cannot exceed 5'],
     },
 
+    specialties: 
+    
+    
+    {
+      type: [String],
+      default: [],
+
+
+    },
 
     status: 
     

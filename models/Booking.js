@@ -2,54 +2,114 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema(
   {
-    userId: {
+    userId: 
+    
+    
+    {
       type: mongoose.Schema.Types.ObjectId,
+
+
+
       ref: 'User',
       required: [true, 'User ID is required'],
       index: true,
     },
-    serviceId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Service',
-      required: [true, 'Service ID is required'],
-      index: true,
-    },
-    date: {
+
+ 
+    date:
+    
+    
+    {
       type: Date,
       required: [true, 'Date is required'],
       validate: {
-        validator: function (value) {
+        validator: function (value) 
+        
+        
+        {
           return value > new Date();
         },
         message: 'Booking date must be in the future',
       },
     },
-    location: {
+       
+    
+    
+    
+    serviceId: 
+       
+       
+       {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Service',
+      required: [true, 'Service ID is required'],
+
+
+      index: true,
+    },
+
+
+
+
+    location: 
+    {
       type: String,
       required: [true, 'Location is required'],
       trim: true,
     },
-    paymentStatus: {
-      type: String,
-      enum: ['pending', 'paid', 'failed', 'refunded'],
-      default: 'pending',
-    },
-    status: {
+    
+    status: 
+    
+    {
       type: String,
       enum: ['pending', 'confirmed', 'assigned', 'in-progress', 'completed', 'cancelled'],
+
+
       default: 'pending',
     },
-    status1: {
+
+
+    paymentStatus: 
+    
+    
+    {
       type: String,
+      enum: ['pending', 'paid', 'failed', 'refunded'],
+
+
+
+      default: 'pending',
+    },
+
+
+
+    status1:
+    
+    
+    
+    {
+      type: String,
+
       enum: ['assigned', 'planning-phase', 'materials-prepared', 'on-the-way-to-venue', 'setup-in-progress', 'completed'],
       default: null,
     },
-    decoratorId: {
+
+
+
+    decoratorId: 
+    
+    
+    {
       type: mongoose.Schema.Types.ObjectId,
+
+
+      
       ref: 'Decorator',
       default: null,
     },
   },
+
+  
   {
     timestamps: true,
   }
